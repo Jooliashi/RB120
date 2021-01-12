@@ -261,7 +261,7 @@ class Move
   end
 
   def to_s
-    @name
+    name.to_s
   end
 end
 
@@ -301,11 +301,11 @@ class Lizard < Move
 end
 
 class RPSGame
-  attr_accessor :human, :computer, :score
+  attr_reader :human, :computer, :score
 
   include Gamebasics
 
-  WINNING_SCORE = 3
+  WINNING_SCORE = 10
 
   def initialize
     display_welcome_message
@@ -328,6 +328,8 @@ class RPSGame
   end
 
   private
+
+  attr_writer :human, :computer, :score
 
   def display_players
     prompt("Hello #{human.name}. " \
