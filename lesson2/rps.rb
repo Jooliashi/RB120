@@ -9,7 +9,7 @@ module Gamebasics
   end
 
   def clear_screen
-    system('cls')
+    system('cls') || system('clear')
   end
 
   def enter_to_continue
@@ -46,36 +46,12 @@ module Gamebasics
     enter_to_continue
   end
 
-  def display_welcome_message
-    clear_screen
-    prompt("Welcome to Rock, Paper, Scissors, Lizard, Spock game!")
-  end
-
-  def display_goodbye_message
-    prompt("Thanks for playing Rock, Paper, Scissors, Lizard, Spock Goodbye!")
-  end
-
   def invalid_input
     prompt("Sorry, the input is invalid. Please input again.")
   end
 
   def cannot_be_empty
     prompt("Sorry, the input cannot be empty. Please re-enter.")
-  end
-
-  def user_choices
-    <<~MSG
-    Please choose:
-    1) 'r' for rock
-    2) 'p' for paper
-    3) 'sc' for scissors
-    4) 'l' for lizard
-    5) 'sp' for spock
-    MSG
-  end
-
-  def display_user_choices
-    prompt(user_choices)
   end
 
   def play_again?
@@ -120,7 +96,7 @@ class Player
   attr_writer :move, :name
 
   def choice_interpreter(choice)
-    case choice
+    case choice.downcase
     when 'r' then Rock.new
     when 'l' then Lizard.new
     when 'p' then Paper.new
@@ -147,19 +123,38 @@ class Human < Player
 
   private
 
+  def user_choices
+    <<~MSG
+    Please choose:
+    1) 'r' for rock
+    2) 'p' for paper
+    3) 'sc' for scissors
+    4) 'l' for lizard
+    5) 'sp' for spock
+    MSG
+  end
+
+  def display_user_choices
+    prompt(user_choices)
+  end
+
+  def valid_name?(n)
+    /\A[[:alpha:]]*[[:blank:]]?([[:alpha:]]+)\z/.match(n)
+  end
+
   def set_name
     n = ''
-    prompt("What's your name?")
+    prompt("What's your name?(alphabet only)")
     loop do
       n = gets.chomp
-      break unless n.empty?
-      cannot_be_empty
+      break if valid_name?(n)
+      invalid_input
     end
     self.name = n
   end
 
   def valid_choice?(choice)
-    Move::VALUES.include? choice
+    Move::VALUES.include? choice.downcase
   end
 end
 
@@ -301,11 +296,10 @@ class Lizard < Move
 end
 
 class RPSGame
-  attr_reader :human, :computer, :score
 
   include Gamebasics
 
-  WINNING_SCORE = 10
+  WINNING_SCORE = 2
 
   def initialize
     display_welcome_message
@@ -316,6 +310,7 @@ class RPSGame
   end
 
   def play
+    clear_screen
     display_players
     loop do
       one_game_rounds
@@ -329,13 +324,21 @@ class RPSGame
 
   private
 
-  attr_writer :human, :computer, :score
+  attr_accessor :human, :computer, :score, :current_winner
+
+  def display_welcome_message
+    clear_screen
+    prompt("Welcome to Rock, Paper, Scissors, Lizard, Spock game!")
+  end
+
+  def display_goodbye_message
+    prompt("Thanks for playing Rock, Paper, Scissors, Lizard, Spock Goodbye!")
+  end
 
   def display_players
     prompt("Hello #{human.name}. " \
            "you are playing against #{computer.name} today.")
     prompt("#{computer.name} is a #{computer.personality} player")
-    pause
   end
 
   def display_moves
@@ -344,16 +347,34 @@ class RPSGame
     prompt("#{computer.name} chose #{computer.move}")
   end
 
-  def display_winner
+  def determine_winner
     case human.move <=> computer.move
     when 1
-      prompt("You won!")
-      @score[@human] += 1
+      @current_winner = @human
     when -1
+      @current_winner = @computer
+    else
+      @current_winner = nil
+    end
+  end
+
+  def display_winner
+    case @current_winner
+    when @human
+      prompt("You won!")
+    when @computer
       prompt("#{computer.name} won!")
-      @score[@computer] += 1
     else
       prompt("It's a tie!")
+    end
+  end
+
+  def calculate_score
+    case @current_winner
+    when @human
+      @score[@human] += 1
+    when @computer
+      @score[@computer] += 1
     end
   end
 
@@ -378,7 +399,7 @@ class RPSGame
   end
 
   def check_historical_moves
-    prompt("Would you like to check historical moves?")
+    prompt("Would you like to check past moves history for this game?")
     answer = ''
     loop do
       answer = gets.chomp.downcase
@@ -403,10 +424,13 @@ class RPSGame
       human.choose
       computer.choose
       display_moves
+      determine_winner 
       display_winner
+      calculate_score
       display_score
       check_historical_moves
       break if grand_winner? || !play_again?
+      clear_screen
     end
   end
 
