@@ -1,9 +1,9 @@
-module Passenger 
+module Passenger
   attr_accessor :passenger
   def number_of_passenger(num)
-    self.passenger = num 
-  end 
-end 
+    self.passenger = num
+  end
+end
 
 class Vehicle
   @@number_of_vehicles = 0
