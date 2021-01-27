@@ -77,8 +77,11 @@ class Board
   def opportunity_square(mark)
     WINNING_LINES.each do |line|
       squares = @squares.values_at(*line)
-      if n_identical_marks?(2, squares)
-        return line.select{ |num| self.squares[num].mark == Square::INITIAL_MARKER }.first
+      if n_identical_marks?(2, squares) &&
+         identify_mark_in_roll(squares) == mark
+        return line.select do |num|
+          self.squares[num].mark == Square::INITIAL_MARKER
+        end.first
       end
     end
     nil
@@ -91,6 +94,10 @@ class Board
   private
 
   attr_accessor :squares, :sample
+
+  def identify_mark_in_roll(rolls)
+    rolls.select(&:marked?).first.mark
+  end
 
   def display(board)
     puts "------+-----+------
@@ -121,7 +128,6 @@ class Board
     return false if markers.size != n
     markers.min == markers.max
   end
-
 end
 
 class Square
@@ -156,7 +162,6 @@ class Player
 end
 
 class Human < Player
-
   def initialize
     @name = set_name
     @marker = set_marker
@@ -178,7 +183,7 @@ class Human < Player
   attr_writer :name, :marker
 
   def set_marker
-    prompt("Hi #{name}, Would you like to set your own marker? 
+    prompt("Hi #{name}, Would you like to set your own marker?
   Enter any single alphabet from a to z or press enter for default marker 'X'")
     n = ''
     loop do
@@ -186,7 +191,7 @@ class Human < Player
       break if valid_marker?(n) || n == ''
       prompt("Please choose a valid marker or press enter for defaults")
     end
-    self.marker = n == "" ? HUMAN_MARKER : n 
+    self.marker = n == "" ? HUMAN_MARKER : n
   end
 
   def valid_marker?(n)
@@ -217,7 +222,7 @@ class Computer < Player
 
   def choose_square(board)
     return advantage_square(board) if advantage_square(board)
-    return at_risk_square(board)if at_risk_square(board)
+    return at_risk_square(board) if at_risk_square(board)
     return 5 if board.center_square_available
     board.random_key
   end
@@ -244,6 +249,7 @@ class TicTacToe
     @computer = Computer.new
     @current_mover = nil
     @score = nil
+    @initial_mover = nil
   end
 
   def play
@@ -256,21 +262,30 @@ class TicTacToe
 
   private
 
-  attr_accessor :board, :human, :computer, :current_mover, :score
+  attr_accessor :board, :human, :computer,
+                :current_mover, :score, :initial_mover
 
   def main_game
-    initialize_player
-    determine_first_mover
+    player_choice
     loop do
-      loop do
-        current_player_moves
-        break if a_winner? || tie?
-      end
-      update_score
-      display_result
-      break if a_champion? || !continue_playing? 
+      one_round
+      break if a_champion? || !continue_playing?
       reset_game
     end
+  end
+
+  def one_round
+    loop do
+      current_player_moves
+      break if a_winner? || tie?
+    end
+    update_score
+    display_result
+  end
+
+  def player_choice
+    initialize_player
+    determine_first_mover
   end
 
   def initialize_player
@@ -280,7 +295,7 @@ class TicTacToe
   end
 
   def initialize_score
-    @score = {@human => 0, @computer => 0}
+    @score = { @human => 0, @computer => 0 }
   end
 
   def display_welcome_message
@@ -290,9 +305,10 @@ class TicTacToe
   end
 
   def determine_first_mover
-    prompt("You are playing against #{computer.name}. Would you like to move first?" +
-      " Please enter 'yes' or 'no'")
-    self.current_mover = yes_or_no ? human : computer
+    prompt("You are playing against #{computer.name}."\
+      " Would you like to move first? Please enter 'yes' or 'no'")
+    self.initial_mover = yes_or_no ? human : computer
+    self.current_mover = initial_mover
   end
 
   def display_goodbye_message
@@ -303,7 +319,7 @@ class TicTacToe
     prompt(game_rules)
     pause
     board.display_sample_board
-    prompt("Here is an example of the board; each square is assigned" + 
+    prompt("Here is an example of the board; each square is assigned"\
             " a number for the purpose of reference\n")
     enter_to_continue
   end
@@ -380,7 +396,8 @@ class TicTacToe
   end
 
   def display_score
-    prompt("You won #{score[human]} times, and computer won #{score[computer]} times")
+    prompt("You won #{score[human]} times," \
+      "and computer won #{score[computer]} times")
   end
 
   def display_winner_message
@@ -417,6 +434,7 @@ class TicTacToe
 
   def reset_game
     self.board = Board.new
+    self.current_mover = initial_mover
   end
 
   def declare_champion
