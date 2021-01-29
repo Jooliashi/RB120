@@ -171,11 +171,11 @@ class Human < Player
     puts "Choose a square in #{joinor(squares)}: "
     square = nil
     loop do
-      square = gets.chomp.to_i
-      break if squares.include?(square)
+      square = gets.chomp
+      break if squares.include?(square.to_i) && square.size == 1
       puts "Sorry, that's not a valid choice."
     end
-    square
+    square.to_i
   end
 
   private
@@ -184,7 +184,7 @@ class Human < Player
 
   def set_marker
     prompt("Hi #{name}, Would you like to set your own marker?
-  Enter any single alphabet from a to z or press enter for default marker 'X'")
+  Enter any single alphabet except 'O' or press enter for default marker 'X'")
     n = ''
     loop do
       n = gets.chomp
@@ -195,7 +195,9 @@ class Human < Player
   end
 
   def valid_marker?(n)
-    n.size == 1 && /\A[[:alpha:]]*[[:blank:]]?([[:alpha:]]+)\z/.match(n)
+    n.size == 1 && 
+    /\A[[:alpha:]]*[[:blank:]]?([[:alpha:]]+)\z/.match(n) &&
+    n.downcase != "o"
   end
 
   def set_name
