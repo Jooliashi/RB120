@@ -16,21 +16,6 @@ module GameBasics
     STDIN.gets
   end
 
-  def set_name
-    n = ''
-    loop do
-      prompt("Enter your name:")
-      n = gets.chomp
-      break if valid_name?(n)
-      prompt("Please use a valid name (alphabetic characters only).")
-    end
-    self.name = n
-  end
-
-  def valid_name?(n)
-    /\A[[:alpha:]]*[[:blank:]]?([[:alpha:]]+)\z/.match(n)
-  end
-
   def play_again?
     prompt("Would you like to play_again? please type 'yes' or 'no'")
     yes_or_no
@@ -73,14 +58,7 @@ module Hand
     adjust_aces(total) if total > 21
     total
   end
-
-  def adjust_aces(total)
-    cards.select(&:ace?).count.times do
-      total -= 10
-    end
-    total
-  end
-
+  
   def <<(card)
     cards << card
   end
@@ -89,7 +67,7 @@ module Hand
     total > 21
   end
 
-  def show_cards
+  def display_cards
     puts "---#{name}'s Hand---"
     cards.each do |card|
       prompt(card.to_s)
@@ -97,16 +75,26 @@ module Hand
     prompt("Total: #{total}")
     puts ""
   end
+
+  private
+  
+  def adjust_aces(total)
+    cards.select(&:ace?).count.times do
+      total -= 10
+    end
+    total
+  end
 end
 
 class Participant
   include GameBasics, Hand
 
-  attr_accessor :cards, :name
+  attr_accessor :cards, :name, :score
 
   def initialize
     @cards = []
     @name = set_name
+    @score = 0
   end
 
   def reset
@@ -117,20 +105,30 @@ end
 class Player < Participant
   def stay?
     prompt("Would you like to hit or stay? Please input 'h' or 's'.")
-    true_for_stay
-  end
-
-  private
-
-  def true_for_stay
     answer = nil
     loop do
       answer = gets.chomp.downcase
       break if ['h', 's', 'hit', 'stay'].include?(answer)
       prompt("Sorry, the answer is invalid. Try again")
     end
-    return true if ['stay', 's'].include?(answer)
-    false
+    ['stay', 's'].include?(answer)
+  end
+
+  private
+
+  def set_name
+    n = ''
+    loop do
+      prompt("Enter your name:")
+      n = gets.chomp
+      break if valid_name?(n)
+      prompt("Please use a valid name (alphabetic characters only).")
+    end
+    self.name = n
+  end
+
+  def valid_name?(n)
+    /\A[[:alpha:]]*[[:blank:]]?([[:alpha:]]+)\z/.match(n)
   end
 end
 
@@ -138,7 +136,7 @@ class Dealer < Participant
   ROBOTS = ['R2D2', 'Hal', 'Chappie', 'Sonny', 'Number 5']
   HAND_LIMIT = 17
 
-  def show_cards(num_cards = 'half')
+  def display_cards(num_cards = 'half')
     if num_cards == 'half'
       puts "---- #{name}'s Hand ----"
       prompt(" ?? ")
@@ -246,18 +244,17 @@ class TwentyOneGame
   private
 
   attr_reader :dealer, :player
-  attr_accessor :current_player, :deck, :score, :rounds
+  attr_accessor :current_player, :deck, :rounds
 
   def set_up_game
     @player = Player.new
     @current_player = @player
-    @score = { player => 0, dealer => 0 }
-    @rounds = input_rounds
+    @rounds = choose_input_rounds
   end
 
   def main_game
     loop do
-      one_tournament
+      play_one_tournament
       declare_champion
       break unless play_again?
       reset_game
@@ -265,44 +262,44 @@ class TwentyOneGame
   end
 
   def set_up_cards
-    first_two_cards
-    show_cards
+    deal_first_two_cards
+    display_cards
   end
 
-  def input_rounds
+  def choose_input_rounds
     clear_screen
     prompt("Hi #{player.name}, "\
            "we will play in tournament style for this game.\n")
-    prompt("How many rounds would you like to play?")
-    user_input_number
+    prompt("How many rounds would you like to play(1-10)?")
+    ask_for_rounds_amount
   end
 
-  def one_tournament
+  def play_one_tournament
     loop do
       set_up_cards
-      take_rounds
+      player_take_turns
       break if a_champion?
       enter_to_continue
       reset_new_round
     end
   end
 
-  def user_input_number
+  def ask_for_rounds_amount
     answer = nil
     loop do
       answer = gets.chomp.to_i
-      break if answer >= 1
-      puts "Please enter an integer bigger than 0."
+      break if answer >= 1 && answer <= 10
+      puts "Please enter an integer between 1 and 10."
     end
     answer
   end
 
-  def take_rounds
+  def player_take_turns
     loop do
       current_player_turn
       break if current_player == player || any_busted?
     end
-    show_result
+    display_round_result
     update_score
     display_scores
   end
@@ -338,17 +335,17 @@ class TwentyOneGame
     enter_to_continue
   end
 
-  def first_two_cards
+  def deal_first_two_cards
     2.times do
       player << deck.deal
       dealer << deck.deal
     end
   end
 
-  def show_cards
+  def display_cards
     clear_screen
-    player.show_cards
-    dealer.show_cards
+    player.display_cards
+    dealer.display_cards
   end
 
   def display_turn
@@ -365,7 +362,7 @@ class TwentyOneGame
     loop do
       break if current_player.busted? || current_player.stay?
       current_player_hit
-      show_cards
+      display_cards
     end
     display_stay_statement if !current_player.busted?
     switch_current_player
@@ -382,29 +379,29 @@ class TwentyOneGame
     player.busted? || dealer.busted?
   end
 
-  def show_result
-    show_final_hand
+  def display_round_result
+    display_final_hand
     display_busted
-    display_winner
+    display_round_winner
   end
 
   def update_score
     if winning_player == player
-      score[player] += 1
+      player.score += 1
     elsif winning_player == dealer
-      score[dealer] += 1
+      dealer.score += 1
     end
   end
 
-  def show_final_hand
+  def display_final_hand
     clear_screen
-    player.show_cards
-    dealer.show_cards('all')
+    player.display_cards
+    dealer.display_cards('all')
     pause
   end
 
   def declare_champion
-    if score[player] > score[dealer]
+    if player.score > dealer.score
       prompt("You are the grand champion!")
     else
       prompt("#{dealer.name} is the grand champion!")
@@ -418,13 +415,13 @@ class TwentyOneGame
   end
 
   def a_champion?
-    score.values.any? { |value| value >= rounds }
+    player.score >= rounds || dealer.score >= rounds
   end
 
   def display_scores
     puts ""
-    prompt("#{player.name} scored #{score[player]},"\
-           " #{dealer.name} scored #{score[dealer]}")
+    prompt("#{player.name} scored #{player.score},"\
+           " #{dealer.name} scored #{dealer.score}")
     puts ""
     display_goal_score
   end
@@ -450,7 +447,7 @@ class TwentyOneGame
     dealer if player.total < dealer.total
   end
 
-  def display_winner
+  def display_round_winner
     winner = winning_player
     if !winner.nil?
       prompt("#{winner.name} won!")
@@ -459,6 +456,7 @@ class TwentyOneGame
     end
     pause
   end
+
 
   def reset_new_round
     deck.reset
@@ -471,12 +469,13 @@ class TwentyOneGame
     self.current_player = player
   end
 
-  def reset_score
-    self.score = { player => 0, dealer => 0 }
+  def reset_goal_rounds
+    self.rounds = choose_input_rounds
   end
 
-  def reset_goal_rounds
-    self.rounds = input_rounds
+  def reset_score
+    player.score = 0
+    dealer.score = 0
   end
 
   def reset_game
